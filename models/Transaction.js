@@ -15,7 +15,7 @@ const Transaction = sequelize.define('Transaction', {
 });
 
 // Define relationships
-Transaction.belongsTo(Terrain, { foreignKey: 'terrain_id', onDelete: 'CASCADE' });
-Transaction.belongsTo(Proprietaire, { foreignKey: 'proprietaire_id', onDelete: 'CASCADE' });
+Transaction.belongsTo(Terrain, { foreignKey: 'terrain_id', as: 'terrain', onDelete: 'CASCADE' });
+Transaction.belongsTo(Proprietaire, { foreignKey: 'proprietaire_id', as: 'proprietaire', onDelete: 'CASCADE' });
 
 module.exports = Transaction;
