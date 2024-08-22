@@ -1,22 +1,30 @@
-const Transaction = require('../models/Transaction');
-const Terrain = require('../models/Terrain');
-const Proprietaire = require('../models/Proprietaire');
+const pool = require('../db');
 
+// Create Transaction
 exports.createTransaction = async (req, res) => {
     try {
-        const transaction = await Transaction.create(req.body);
-        res.status(201).json(transaction);
+        const { date, montant, terrain_id, proprietaire_id } = req.body;
+        const [result] = await pool.query(
+            'INSERT INTO transactions (date, montant, terrain_id, proprietaire_id) VALUES (?, ?, ?, ?)',
+            [date, montant, terrain_id, proprietaire_id]
+        );
+        const transactionId = result.insertId;
+        res.status(201).json({ id: transactionId, date, montant, terrain_id, proprietaire_id });
     } catch (error) {
         console.error('Error creating transaction:', error);
         res.status(400).json({ error: error.message });
     }
 };
 
+// Get All Transactions
 exports.getAllTransactions = async (req, res) => {
     try {
-        const transactions = await Transaction.findAll({
-            include: ['terrain', 'proprietaire']
-        });
+        const [transactions] = await pool.query(`
+            SELECT t.*, te.adresse AS terrain_adresse, p.nom AS proprietaire_nom
+            FROM transactions t
+            JOIN terrains te ON t.terrain_id = te.id
+            JOIN proprietaires p ON t.proprietaire_id = p.id
+        `);
         res.status(200).json(transactions);
     } catch (error) {
         console.error('Error fetching transactions:', error);
@@ -24,13 +32,19 @@ exports.getAllTransactions = async (req, res) => {
     }
 };
 
+// Get Transaction by ID
 exports.getTransactionById = async (req, res) => {
     try {
-        const transaction = await Transaction.findByPk(req.params.id, {
-            include: ['terrain', 'proprietaire']
-        });
-        if (transaction) {
-            res.status(200).json(transaction);
+        const [transactions] = await pool.query(`
+            SELECT t.*, te.adresse AS terrain_adresse, p.nom AS proprietaire_nom
+            FROM transactions t
+            JOIN terrains te ON t.terrain_id = te.id
+            JOIN proprietaires p ON t.proprietaire_id = p.id
+            WHERE t.id = ?
+        `, [req.params.id]);
+
+        if (transactions.length > 0) {
+            res.status(200).json(transactions[0]);
         } else {
             res.status(404).json({ message: 'Transaction not found' });
         }
@@ -40,16 +54,26 @@ exports.getTransactionById = async (req, res) => {
     }
 };
 
+// Update Transaction by ID
 exports.updateTransactionById = async (req, res) => {
     try {
-        const [updated] = await Transaction.update(req.body, {
-            where: { id: req.params.id }
-        });
-        if (updated) {
-            const updatedTransaction = await Transaction.findByPk(req.params.id, {
-                include: ['terrain', 'proprietaire']
-            });
-            res.status(200).json(updatedTransaction);
+        const { date, montant, terrain_id, proprietaire_id } = req.body;
+        const [result] = await pool.query(`
+            UPDATE transactions 
+            SET date = ?, montant = ?, terrain_id = ?, proprietaire_id = ?
+            WHERE id = ?
+        `, [date, montant, terrain_id, proprietaire_id, req.params.id]);
+
+        if (result.affectedRows > 0) {
+            const [updatedTransaction] = await pool.query(`
+                SELECT t.*, te.adresse AS terrain_adresse, p.nom AS proprietaire_nom
+                FROM transactions t
+                JOIN terrains te ON t.terrain_id = te.id
+                JOIN proprietaires p ON t.proprietaire_id = p.id
+                WHERE t.id = ?
+            `, [req.params.id]);
+
+            res.status(200).json(updatedTransaction[0]);
         } else {
             res.status(404).json({ message: 'Transaction not found' });
         }
@@ -59,12 +83,12 @@ exports.updateTransactionById = async (req, res) => {
     }
 };
 
+// Delete Transaction by ID
 exports.deleteTransactionById = async (req, res) => {
     try {
-        const deleted = await Transaction.destroy({
-            where: { id: req.params.id }
-        });
-        if (deleted) {
+        const [result] = await pool.query('DELETE FROM transactions WHERE id = ?', [req.params.id]);
+
+        if (result.affectedRows > 0) {
             res.status(204).send();
         } else {
             res.status(404).json({ message: 'Transaction not found' });

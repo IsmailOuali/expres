@@ -1,18 +1,25 @@
-const Proprietaire = require('../models/Proprietaire');
+const pool = require('../db');
 
+// Create Proprietaire
 exports.createProprietaire = async (req, res) => {
     try {
-        const proprietaire = await Proprietaire.create(req.body);
-        res.status(201).json(proprietaire);
+        const { nom, adresse, contact } = req.body;
+        const [result] = await pool.query(
+            'INSERT INTO proprietaires (nom, adresse, contact) VALUES (?, ?, ?)',
+            [nom, adresse, contact]
+        );
+        const proprietaireId = result.insertId;
+        res.status(201).json({ id: proprietaireId, nom, adresse, contact });
     } catch (error) {
         console.error('Error creating proprietaire:', error);
         res.status(400).json({ error: error.message });
     }
 };
 
+// Get All Proprietaires
 exports.getAllProprietaires = async (req, res) => {
     try {
-        const proprietaires = await Proprietaire.findAll();
+        const [proprietaires] = await pool.query('SELECT * FROM proprietaires');
         res.status(200).json(proprietaires);
     } catch (error) {
         console.error('Error fetching proprietaires:', error);
@@ -20,11 +27,12 @@ exports.getAllProprietaires = async (req, res) => {
     }
 };
 
+// Get Proprietaire by ID
 exports.getProprietaireById = async (req, res) => {
     try {
-        const proprietaire = await Proprietaire.findByPk(req.params.id);
-        if (proprietaire) {
-            res.status(200).json(proprietaire);
+        const [proprietaires] = await pool.query('SELECT * FROM proprietaires WHERE id = ?', [req.params.id]);
+        if (proprietaires.length > 0) {
+            res.status(200).json(proprietaires[0]);
         } else {
             res.status(404).json({ message: 'Proprietaire not found' });
         }
@@ -34,14 +42,17 @@ exports.getProprietaireById = async (req, res) => {
     }
 };
 
+// Update Proprietaire by ID
 exports.updateProprietaireById = async (req, res) => {
     try {
-        const [updated] = await Proprietaire.update(req.body, {
-            where: { id: req.params.id }
-        });
-        if (updated) {
-            const updatedProprietaire = await Proprietaire.findByPk(req.params.id);
-            res.status(200).json(updatedProprietaire);
+        const { nom, adresse, contact } = req.body;
+        const [result] = await pool.query(
+            'UPDATE proprietaires SET nom = ?, adresse = ?, contact = ? WHERE id = ?',
+            [nom, adresse, contact, req.params.id]
+        );
+        if (result.affectedRows > 0) {
+            const [updatedProprietaire] = await pool.query('SELECT * FROM proprietaires WHERE id = ?', [req.params.id]);
+            res.status(200).json(updatedProprietaire[0]);
         } else {
             res.status(404).json({ message: 'Proprietaire not found' });
         }
@@ -51,12 +62,11 @@ exports.updateProprietaireById = async (req, res) => {
     }
 };
 
+// Delete Proprietaire by ID
 exports.deleteProprietaireById = async (req, res) => {
     try {
-        const deleted = await Proprietaire.destroy({
-            where: { id: req.params.id }
-        });
-        if (deleted) {
+        const [result] = await pool.query('DELETE FROM proprietaires WHERE id = ?', [req.params.id]);
+        if (result.affectedRows > 0) {
             res.status(204).send();
         } else {
             res.status(404).json({ message: 'Proprietaire not found' });
