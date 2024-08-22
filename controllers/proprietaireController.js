@@ -27,7 +27,6 @@ exports.getAllProprietaires = async (req, res) => {
     }
 };
 
-// Get Proprietaire by ID
 exports.getProprietaireById = async (req, res) => {
     try {
         const [proprietaires] = await pool.query('SELECT * FROM proprietaires WHERE id = ?', [req.params.id]);
@@ -42,7 +41,6 @@ exports.getProprietaireById = async (req, res) => {
     }
 };
 
-// Update Proprietaire by ID
 exports.updateProprietaireById = async (req, res) => {
     try {
         const { nom, adresse, contact } = req.body;
